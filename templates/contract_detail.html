@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Contract Details - GigUp{% endblock %}
+
+{% block content %}
+<div id="contractContainer">
+    <p>Loading contract details...</p>
+</div>
+
+<!-- Signature Pad Modal -->
+<div id="signatureModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 10px; width: 90%; max-width: 500px;">
+        <h3>Sign Contract</h3>
+        <p>Draw your signature in the box below:</p>
+        
+        <canvas id="signaturePad" width="400" height="200" style="border: 1px solid #ddd; border-radius: 5px; cursor: crosshair;"></canvas>
+        
+        <div style="display: flex; gap: 0.5rem; margin: 1rem 0;">
+            <button onclick="clearSignature()" class="btn" style="background: #6c757d;">
+                <i class="fas fa-eraser"></i> Clear
+            </button>
+            <button onclick="saveSignature()" class="btn" style="background: #28a745;">
+                <i class="fas fa-check"></i> Save Signature
+            </button>
+            <button onclick="closeSignatureModal()" class="btn" style="background: #dc3545;">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentContract = null;
+    let signaturePad = null;
+    let currentSigner = null;
+
+    async function loadContractDetail() {
+        const contractId = window.location.pathname.split('/').pop();
+        
+        try {
+            const response = await fetch(`/api/user/contracts`, {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const contract = data.contracts.find(c => c.id == contractId);
+                
+                if (contract) {
+                    displayContractDetail(contract);
+                } else {
+                    showContractNotFound();
+                }
+            } else {
+                showContractNotFound();
+            }
+        } catch (error) {
+            console.error('Error loading contract:', error);
+            showContractNotFound();
+        }
+    }
+
+    function displayContractDetail(contract) {
+        currentContract = contract;
+        const container = document.getElementById('contractContainer');
+        
+        const isProvider = contract.provider_id === parseInt('{{ session.user_id|default(0) }}');
+        const isSeeker = contract.seeker_id === parseInt('{{ session.user_id|default(0) }}');
+        const canSign = (isProvider && !contract.provider_signature) || (isSeeker && !contract.seeker_signature);
+        
+        container.innerHTML = `
+            <div style="max-width: 800px; margin: 0 auto;">
+                <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <!-- Contract Header -->
+                    <div style="text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #667eea; padding-bottom: 1rem;">
+                        <h1 style="color: #333; margin-bottom: 0.5rem;">GigUp Contract Agreement</h1>
+                        <p style="color: #666; font-size: 1.1rem;">${contract.title}</p>
+                    </div>
+
+                    <!-- Contract Parties -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                        <div>
+                            <h3 style="color: #333; margin-bottom: 1rem;">Provider</h3>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px;">
+                                <p><strong>Name:</strong> ${contract.provider_name}</p>
+                                <p><strong>Role:</strong> Service Provider</p>
+                                ${contract.provider_signature ? `
+                                    <p><strong>Signature:</strong> <span style="color: #28a745;">✓ Signed</span></p>
+                                    <p><small>Signed on: ${new Date(contract.signed_at).toLocaleDateString()}</small></p>
+                                ` : `
+                                    <p><strong>Signature:</strong> <span style="color: #dc3545;">Pending</span></p>
+                                `}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 style="color: #333; margin-bottom: 1rem;">Seeker</h3>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px;">
+                                <p><strong>Name:</strong> ${contract.seeker_name}</p>
+                                <p><strong>Role:</strong> Service Seeker</p>
+                                ${contract.seeker_signature ? `
+                                    <p><strong>Signature:</strong> <span style="color: #28a745;">✓ Signed</span></p>
+                                    <p><small>Signed on: ${new Date(contract.signed_at).toLocaleDateString()}</small></p>
+                                ` : `
+                                    <p><strong>Signature:</strong> <span style="color: #dc3545;">Pending</span></p>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contract Details -->
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="color: #333; margin-bottom: 1rem;">Contract Details</h3>
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 5px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                                <div>
+                                    <strong>Gig:</strong> ${contract.title}
+                                </div>
+                                <div>
+                                    <strong>Pay Amount:</strong> $${contract.pay}
+                                </div>
+                                ${contract.hours ? `<div><strong>Hours:</strong> ${contract.hours}</div>` : ''}
+                                <div>
+                                    <strong>Contract Date:</strong> ${new Date(contract.date).toLocaleDateString()}
+                                </div>
+                                <div>
+                                    <strong>Status:</strong> 
+                                    <span style="color: ${contract.status === 'signed' ? '#28a745' : contract.status === 'pending' ? '#ffc107' : '#dc3545'};">
+                                        ${contract.status.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contract Terms -->
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="color: #333; margin-bottom: 1rem;">Terms & Conditions</h3>
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 5px; line-height: 1.6;">
+                            ${contract.terms || `
+                                <p>This contract formalizes the agreement between the Provider and Seeker for the gig "${contract.title}".</p>
+                                <p><strong>Responsibilities:</strong></p>
+                                <ul>
+                                    <li>Provider agrees to deliver the services as described in the gig</li>
+                                    <li>Seeker agrees to provide necessary information and cooperation</li>
+                                    <li>Both parties agree to maintain professional conduct</li>
+                                </ul>
+                                <p><strong>Payment:</strong> $${contract.pay} upon satisfactory completion of the gig</p>
+                                <p><strong>Dispute Resolution:</strong> Any disputes will be mediated through GigUp platform</p>
+                            `}
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="text-align: center; margin-top: 2rem;">
+                        ${canSign ? `
+                            <button onclick="openSignatureModal(${isProvider ? 'true' : 'false'})" class="btn" style="background: #28a745; padding: 1rem 2rem; font-size: 1.1rem;">
+                                <i class="fas fa-signature"></i> Sign Contract
+                            </button>
+                        ` : ''}
+                        
+                        ${contract.status === 'signed' ? `
+                            <button onclick="downloadContract()" class="btn" style="background: #17a2b8; padding: 1rem 2rem; font-size: 1.1rem;">
+                                <i class="fas fa-download"></i> Download Contract
+                            </button>
+                        ` : ''}
+                        
+                        <a href="/my-gigs" class="btn" style="background: #6c757d; padding: 1rem 2rem; font-size: 1.1rem;">
+                            <i class="fas fa-arrow-left"></i> Back to My Gigs
+                        </a>
+                    </div>
+
+                    <!-- Signatures Display -->
+                    ${contract.status === 'signed' ? `
+                        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #dee2e6;">
+                            <h3 style="color: #333; margin-bottom: 1rem; text-align: center;">Signatures</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                                <div style="text-align: center;">
+                                    <h4>Provider Signature</h4>
+                                    ${contract.provider_signature ? `
+                                        <img src="${contract.provider_signature}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px;">
+                                        <p><small>${contract.provider_name}</small></p>
+                                    ` : '<p>Not signed</p>'}
+                                </div>
+                                <div style="text-align: center;">
+                                    <h4>Seeker Signature</h4>
+                                    ${contract.seeker_signature ? `
+                                        <img src="${contract.seeker_signature}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px;">
+                                        <p><small>${contract.seeker_name}</small></p>
+                                    ` : '<p>Not signed</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    function showContractNotFound() {
+        document.getElementById('contractContainer').innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+                <h2>Contract Not Found</h2>
+                <p>The contract you're looking for doesn't exist or you don't have permission to view it.</p>
+                <a href="/my-gigs" class="btn">Back to My Gigs</a>
+            </div>
+        `;
+    }
+
+    // Signature functionality
+    function openSignatureModal(isProvider) {
+        currentSigner = isProvider ? 'provider' : 'seeker';
+        document.getElementById('signatureModal').style.display = 'flex';
+        
+        // Initialize signature pad
+        const canvas = document.getElementById('signaturePad');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        canvas.onmousedown = (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        };
+
+        canvas.onmousemove = (e) => {
+            if (!isDrawing) return;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        };
+
+        canvas.onmouseup = () => isDrawing = false;
+        canvas.onmouseout = () => isDrawing = false;
+    }
+
+    function clearSignature() {
+        const canvas = document.getElementById('signaturePad');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function closeSignatureModal() {
+        document.getElementById('signatureModal').style.display = 'none';
+        currentSigner = null;
+    }
+
+    function saveSignature() {
+        const canvas = document.getElementById('signaturePad');
+        const signatureData = canvas.toDataURL(); // Base64 encoded image
+        
+        if (!currentContract || !currentSigner) return;
+
+        // Send signature to server
+        fetch(`/api/contracts/${currentContract.id}/sign`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ signature: signatureData })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (response.ok) {
+                showAlert('Contract signed successfully!', 'success');
+                closeSignatureModal();
+                loadContractDetail(); // Reload to show updated status
+            } else {
+                showAlert('Error: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            showAlert('Network error: ' + error.message, 'error');
+        });
+    }
+
+    function downloadContract() {
+        // Simple contract download (in production, generate PDF)
+        const contractText = `
+GIGUP CONTRACT AGREEMENT
+
+Contract ID: ${currentContract.id}
+Gig: ${currentContract.title}
+Provider: ${currentContract.provider_name}
+Seeker: ${currentContract.seeker_name}
+Pay Amount: $${currentContract.pay}
+Date: ${new Date(currentContract.date).toLocaleDateString()}
+Status: ${currentContract.status}
+
+TERMS:
+${currentContract.terms}
+
+SIGNATURES:
+Provider: ${currentContract.provider_name} - ${currentContract.provider_signature ? 'Signed' : 'Not Signed'}
+Seeker: ${currentContract.seeker_name} - ${currentContract.seeker_signature ? 'Signed' : 'Not Signed'}
+
+Generated on: ${new Date().toLocaleDateString()}
+        `;
+
+        const blob = new Blob([contractText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `contract-${currentContract.id}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Load contract when page loads
+    loadContractDetail();
+</script>
+{% endblock %}

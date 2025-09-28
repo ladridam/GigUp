@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - GigUp{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <h1><i class="fas fa-cogs"></i> Admin Dashboard</h1>
+    
+    <!-- Stats Overview -->
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0;">
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+            <div style="font-size: 2rem; color: #667eea; margin-bottom: 0.5rem;">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3 id="totalUsers">0</h3>
+            <p style="margin: 0; color: #666;">Total Users</p>
+        </div>
+        
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+            <div style="font-size: 2rem; color: #28a745; margin-bottom: 0.5rem;">
+                <i class="fas fa-briefcase"></i>
+            </div>
+            <h3 id="totalGigs">0</h3>
+            <p style="margin: 0; color: #666;">Active Gigs</p>
+        </div>
+        
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+            <div style="font-size: 2rem; color: #ffc107; margin-bottom: 0.5rem;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h3 id="pendingApprovals">0</h3>
+            <p style="margin: 0; color: #666;">Pending Approvals</p>
+        </div>
+        
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+            <div style="font-size: 2rem; color: #dc3545; margin-bottom: 0.5rem;">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h3 id="pendingApplications">0</h3>
+            <p style="margin: 0; color: #666;">Pending Applications</p>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div style="display: flex; gap: 0.5rem; margin: 2rem 0; flex-wrap: wrap;">
+        <button onclick="showTab('users')" id="usersTab" class="btn" style="background: #667eea;">
+            <i class="fas fa-users"></i> User Management
+        </button>
+        <button onclick="showTab('gigs')" id="gigsTab" class="btn" style="background: #6c757d;">
+            <i class="fas fa-briefcase"></i> Gig Management
+        </button>
+        <button onclick="showTab('applications')" id="applicationsTab" class="btn" style="background: #6c757d;">
+            <i class="fas fa-paper-plane"></i> Applications
+        </button>
+        <button onclick="showTab('contracts')" id="contractsTab" class="btn" style="background: #6c757d;">
+            <i class="fas fa-file-contract"></i> Contracts
+        </button>
+    </div>
+
+    <!-- Users Tab -->
+    <div id="usersContent" class="tab-content">
+        <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2 style="margin-bottom: 1.5rem;">User Management</h2>
+            <div id="usersList"></div>
+        </div>
+    </div>
+
+    <!-- Gigs Tab -->
+    <div id="gigsContent" class="tab-content" style="display: none;">
+        <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2 style="margin-bottom: 1.5rem;">Gig Management</h2>
+            <div id="gigsList"></div>
+        </div>
+    </div>
+
+    <!-- Applications Tab -->
+    <div id="applicationsContent" class="tab-content" style="display: none;">
+        <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2 style="margin-bottom: 1.5rem;">All Applications</h2>
+            <div id="applicationsList"></div>
+        </div>
+    </div>
+
+    <!-- Contracts Tab -->
+    <div id="contractsContent" class="tab-content" style="display: none;">
+        <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2 style="margin-bottom: 1.5rem;">Contract Management</h2>
+            <div id="contractsList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'users';
+
+    // Load dashboard data
+    async function loadDashboard() {
+        try {
+            // Load stats
+            const statsResponse = await fetch('/api/admin/stats', {
+                credentials: 'include'
+            });
+            if (statsResponse.ok) {
+                const stats = await statsResponse.json();
+                document.getElementById('totalUsers').textContent = stats.total_users;
+                document.getElementById('totalGigs').textContent = stats.active_gigs;
+                document.getElementById('pendingApprovals').textContent = stats.pending_approvals || 0;
+                document.getElementById('pendingApplications').textContent = stats.pending_applications;
+            }
+
+            // Load initial tab data
+            showTab('users');
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+        }
+    }
+
+    function showTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+        });
+        
+        // Reset all tab buttons
+        document.querySelectorAll('.btn').forEach(btn => {
+            if (btn.id.includes('Tab')) {
+                btn.style.background = '#6c757d';
+            }
+        });
+        
+        // Show selected tab
+        document.getElementById(tabName + 'Content').style.display = 'block';
+        document.getElementById(tabName + 'Tab').style.background = '#667eea';
+        
+        currentTab = tabName;
+        
+        // Load data for the tab
+        switch(tabName) {
+            case 'users':
+                loadUsers();
+                break;
+            case 'gigs':
+                loadAllGigs();
+                break;
+            case 'applications':
+                loadAllApplications();
+                break;
+            case 'contracts':
+                loadAllContracts();
+                break;
+        }
+    }
+
+    async function loadUsers() {
+        try {
+            const response = await fetch('/api/admin/users', {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                displayUsers(data.users);
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+        }
+    }
+
+    function displayUsers(users) {
+        const container = document.getElementById('usersList');
+        
+        if (users.length === 0) {
+            container.innerHTML = '<p>No users found.</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">User</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Contact</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Status</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Verification</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 1rem;">
+                                    <strong>${user.name}</strong><br>
+                                    <small style="color: #666;">${user.role}</small>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    ${user.email}<br>
+                                    <small style="color: #666;">${user.phone}</small>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    <span style="padding: 0.25rem 0.5rem; border-radius: 15px; font-size: 0.8rem; 
+                                        background: ${user.is_approved ? '#d4edda' : '#fff3cd'}; 
+                                        color: ${user.is_approved ? '#155724' : '#856404'};">
+                                        ${user.is_approved ? 'Approved' : 'Pending'}
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    <div style="font-size: 0.8rem;">
+                                        <div>📧 ${user.verified_email ? 'Verified' : 'Not Verified'}</div>
+                                        <div>📞 ${user.verified_phone ? 'Verified' : 'Not Verified'}</div>
+                                    </div>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    ${!user.is_approved ? `
+                                        <button onclick="approveUser(${user.id}, true)" class="btn" style="background: #28a745; padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                    ` : `
+                                        <button onclick="approveUser(${user.id}, false)" class="btn" style="background: #dc3545; padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                            <i class="fas fa-ban"></i> Revoke
+                                        </button>
+                                    `}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    async function approveUser(userId, approve) {
+        try {
+            const response = await fetch(`/api/admin/users/${userId}/approve`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ approved: approve })
+            });
+
+            if (response.ok) {
+                showAlert(`User ${approve ? 'approved' : 'revoked'} successfully!`, 'success');
+                loadUsers(); // Reload the list
+                loadDashboard(); // Reload stats
+            } else {
+                const error = await response.json();
+                showAlert('Error: ' + error.error, 'error');
+            }
+        } catch (error) {
+            showAlert('Network error: ' + error.message, 'error');
+        }
+    }
+
+    async function loadAllGigs() {
+        try {
+            const response = await fetch('/api/gigs', {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                displayAllGigs(data.gigs);
+            }
+        } catch (error) {
+            console.error('Error loading gigs:', error);
+        }
+    }
+
+    function displayAllGigs(gigs) {
+        const container = document.getElementById('gigsList');
+        
+        if (gigs.length === 0) {
+            container.innerHTML = '<p>No gigs found.</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Gig</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Provider</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Details</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Status</th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${gigs.map(gig => `
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 1rem;">
+                                    <strong>${gig.title}</strong><br>
+                                    <small style="color: #666;">${gig.category}</small>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    ${gig.provider_name}<br>
+                                    <small style="color: #666;">⭐ ${gig.provider_rating || 'No rating'}</small>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    $${gig.pay}<br>
+                                    <small style="color: #666;">${new Date(gig.created_at).toLocaleDateString()}</small>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    <span style="padding: 0.25rem 0.5rem; border-radius: 15px; font-size: 0.8rem; 
+                                        background: ${gig.status === 'open' ? '#d4edda' : gig.status === 'assigned' ? '#fff3cd' : '#f8d7da'}; 
+                                        color: ${gig.status === 'open' ? '#155724' : gig.status === 'assigned' ? '#856404' : '#721c24'};">
+                                        ${gig.status}
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    <a href="/gig/${gig.id}" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    async function loadAllApplications() {
+        try {
+            // We'll load applications from all gigs
+            // For now, show a message that this feature is coming
+            document.getElementById('applicationsList').innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <h3>Applications Overview</h3>
+                    <p>Detailed application analytics coming soon!</p>
+                    <p>Use the "User Management" tab to see user approval status.</p>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading applications:', error);
+        }
+    }
+
+    async function loadAllContracts() {
+        try {
+            // We'll load all contracts
+            // For now, show a message
+            document.getElementById('contractsList').innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <h3>Contract Management</h3>
+                    <p>Contract oversight and management coming soon!</p>
+                    <p>Monitor contract status and resolve disputes from here.</p>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading contracts:', error);
+        }
+    }
+
+    // Load dashboard when page loads
+    loadDashboard();
+</script>
+
+<style>
+    .tab-content {
+        transition: all 0.3s ease;
+    }
+    
+    table {
+        width: 100%;
+    }
+    
+    th {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    tr:hover {
+        background: #f8f9fa;
+    }
+</style>
+{% endblock %}

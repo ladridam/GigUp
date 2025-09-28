@@ -135,7 +135,7 @@
                 <a href="/dashboard">Dashboard</a>
                 <a href="/gigs">Browse Gigs</a>
                 <a href="/my-gigs">My Gigs</a>
-                ${user.role === 'admin' ? '<a href="/admin">Admin</a>' : ''}
+                ${user.role === 'admin' ? '<a href="/admin-dashboard">Admin Dashboard</a>' : ''}
                 <div class="user-info">
                     <span>Hello, ${user.name}</span>
                     <button onclick="logout()" class="btn">Logout</button>

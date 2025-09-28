@@ -94,6 +94,14 @@ def create_app():
     def manage_applications():
         return render_template('manage_applications.html')
     
+    @app.route('/admin-dashboard')
+    def admin_dashboard():
+        return render_template('admin_dashboard.html')
+    
+    @app.route('/contract/<int:contract_id>')
+    def contract_detail(contract_id):
+        return render_template('contract_detail.html') #removed contract_id=contract_id
+    
     return app
 
 # Create the application instance
