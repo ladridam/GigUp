@@ -273,7 +273,7 @@
 
     function viewApplications(gigId) {
         // This would open a modal or navigate to applications page
-        alert(`View applications for gig ${gigId} - to be implemented`);
+        window.location.href = `/manage-applications?gig_id=${gigId}`;
     }
 
     function viewContract(contractId) {

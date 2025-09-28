@@ -179,17 +179,25 @@
                 })
             });
 
+            const result = await response.json();
+            
             if (response.ok) {
                 showAlert('Application submitted successfully!', 'success');
-                document.querySelector('#actionButtons button').disabled = true;
-                document.querySelector('#actionButtons button').innerHTML = '<i class="fas fa-check"></i> Applied';
-                document.querySelector('#actionButtons button').style.background = '#6c757d';
+                // Disable apply button
+                const applyBtn = document.querySelector(`button[onclick="applyToGig(${gigId})"]`);
+                if (applyBtn) {
+                    applyBtn.disabled = true;
+                    applyBtn.innerHTML = '<i class="fas fa-check"></i> Applied';
+                    applyBtn.style.background = '#6c757d';
+                    applyBtn.onclick = null;
+                }
             } else {
-                const error = await response.json();
-                showAlert(error.error || 'Error applying to gig', 'error');
+                showAlert('Error: ' + (result.error || 'Failed to apply'), 'error');
+                console.error('Application error:', result);
             }
         } catch (error) {
-            showAlert('Error applying to gig', 'error');
+            showAlert('Network error: ' + error.message, 'error');
+            console.error('Network error:', error);
         }
     }
 

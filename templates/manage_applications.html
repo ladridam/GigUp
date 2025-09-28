@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Applications - GigUp{% endblock %}
+
+{% block content %}
+<div class="manage-applications-page">
+    <h1>Manage Applications</h1>
+    
+    <div id="applicationsContainer">
+        <p>Loading applications...</p>
+    </div>
+</div>
+
+<script>
+    async function loadApplications() {
+        const gigId = new URLSearchParams(window.location.search).get('gig_id');
+        
+        if (!gigId) {
+            document.getElementById('applicationsContainer').innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <h3>No Gig Selected</h3>
+                    <p>Please select a gig from "My Gigs" to manage applications.</p>
+                    <a href="/my-gigs" class="btn">Go to My Gigs</a>
+                </div>
+            `;
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/gigs/${gigId}/applications`, {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                displayApplications(data.applications, gigId);
+            } else {
+                document.getElementById('applicationsContainer').innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <h3>Error Loading Applications</h3>
+                        <p>Unable to load applications for this gig.</p>
+                        <a href="/my-gigs" class="btn">Back to My Gigs</a>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading applications:', error);
+        }
+    }
+
+    function displayApplications(applications, gigId) {
+        const container = document.getElementById('applicationsContainer');
+        
+        if (applications.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3>No Applications Yet</h3>
+                    <p>Applications will appear here when seekers apply to your gig.</p>
+                    <a href="/gig/${gigId}" class="btn">View Gig</a>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="margin-bottom: 1rem;">
+                <a href="/my-gigs" class="btn" style="background: #6c757d;">
+                    <i class="fas fa-arrow-left"></i> Back to My Gigs
+                </a>
+            </div>
+            <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h3>Applications for Your Gig</h3>
+                <p style="color: #666; margin-bottom: 1.5rem;">
+                    ${applications.length} application${applications.length !== 1 ? 's' : ''} received
+                </p>
+                
+                ${applications.map(app => `
+                    <div style="border: 1px solid #e9ecef; padding: 1.5rem; margin: 1rem 0; border-radius: 5px; ${app.status === 'accepted' ? 'border-left: 4px solid #28a745;' : app.status === 'rejected' ? 'border-left: 4px solid #dc3545;' : 'border-left: 4px solid #ffc107;'}">
+                        <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 1rem;">
+                            <div style="flex: 1;">
+                                <h4 style="margin: 0 0 0.5rem 0; color: #333;">
+                                    ${app.seeker_name}
+                                    ${app.seeker_rating ? `<span style="color: #ffc107;">⭐ ${app.seeker_rating}</span>` : ''}
+                                </h4>
+                                <p style="margin: 0; color: #666;">
+                                    <i class="fas fa-envelope"></i> ${app.seeker_email} | 
+                                    <i class="fas fa-phone"></i> ${app.seeker_phone}
+                                </p>
+                                ${app.seeker_skills ? `
+                                    <p style="margin: 0.5rem 0 0 0; color: #666;">
+                                        <strong>Skills:</strong> ${app.seeker_skills}
+                                    </p>
+                                ` : ''}
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.9rem; 
+                                    background: ${app.status === 'pending' ? '#fff3cd' : app.status === 'accepted' ? '#d4edda' : '#f8d7da'}; 
+                                    color: ${app.status === 'pending' ? '#856404' : app.status === 'accepted' ? '#155724' : '#721c24'};">
+                                    ${app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        ${app.message ? `
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Application Message:</strong>
+                                <p style="margin: 0.5rem 0 0 0; color: #555; background: #f8f9fa; padding: 1rem; border-radius: 5px;">
+                                    ${app.message}
+                                </p>
+                            </div>
+                        ` : ''}
+                        
+                        <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">
+                            Applied: ${new Date(app.created_at).toLocaleString()}
+                        </p>
+                        
+                        <div id="actionButtons-${app.id}" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            ${app.status === 'pending' ? `
+                                <button onclick="updateApplicationStatus(${app.id}, 'accepted')" class="btn" style="background: #28a745;">
+                                    <i class="fas fa-check"></i> Accept
+                                </button>
+                                <button onclick="updateApplicationStatus(${app.id}, 'rejected')" class="btn" style="background: #dc3545;">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            ` : ''}
+                            ${app.status === 'accepted' ? `
+                                <button disabled class="btn" style="background: #28a745;">
+                                    <i class="fas fa-check"></i> Accepted
+                                </button>
+                                <button onclick="viewContract(${app.id})" class="btn">
+                                    <i class="fas fa-file-contract"></i> View Contract
+                                </button>
+                            ` : ''}
+                            ${app.status === 'rejected' ? `
+                                <button disabled class="btn" style="background: #dc3545;">
+                                    <i class="fas fa-times"></i> Rejected
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    async function updateApplicationStatus(appId, status) {
+        if (!confirm(`Are you sure you want to ${status} this application?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/applications/${appId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ status: status })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                showAlert(`Application ${status} successfully!`, 'success');
+                // Reload applications to show updated status
+                loadApplications();
+            } else {
+                showAlert('Error: ' + (result.error || 'Failed to update application'), 'error');
+            }
+        } catch (error) {
+            showAlert('Network error: ' + error.message, 'error');
+        }
+    }
+
+    function viewContract(appId) {
+        // This would navigate to contract page
+        alert(`View contract for application ${appId} - to be implemented`);
+    }
+
+    // Load applications when page loads
+    loadApplications();
+</script>
+{% endblock %}

@@ -90,6 +90,10 @@ def create_app():
     def profile():
         return render_template('profile.html')
     
+    @app.route('/manage-applications')
+    def manage_applications():
+        return render_template('manage_applications.html')
+    
     return app
 
 # Create the application instance
