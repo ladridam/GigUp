@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Gigs - GigUp{% endblock %}
+
+{% block content %}
+<div class="gigs-page">
+    <h1>Browse Available Gigs</h1>
+    
+    <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap;">
+        <button onclick="getLocationAndLoadGigs()" class="btn">
+            <i class="fas fa-location-arrow"></i> Gigs Near Me
+        </button>
+        <button onclick="loadAllGigs()" class="btn" style="background: #6c757d;">
+            <i class="fas fa-globe"></i> All Gigs
+        </button>
+        <select id="categoryFilter" onchange="filterByCategory()" style="padding: 0.5rem; border-radius: 5px; border: 1px solid #ddd;">
+            <option value="">All Categories</option>
+            <option value="tech">Technology</option>
+            <option value="creative">Creative</option>
+            <option value="manual">Manual Labor</option>
+            <option value="professional">Professional</option>
+            <option value="other">Other</option>
+        </select>
+    </div>
+
+    <div id="gigsContainer" style="margin-top: 2rem;">
+        <p>Select an option to load gigs...</p>
+    </div>
+</div>
+
+<script>
+    async function getLocationAndLoadGigs() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    await loadGigs(`/api/gigs?lat=${lat}&lng=${lng}`);
+                },
+                (error) => {
+                    showAlert('Unable to get your location. Showing all gigs instead.', 'error');
+                    loadAllGigs();
+                }
+            );
+        } else {
+            showAlert('Geolocation not supported. Showing all gigs.', 'error');
+            loadAllGigs();
+        }
+    }
+
+    async function loadAllGigs() {
+        await loadGigs('/api/gigs');
+    }
+
+    async function filterByCategory() {
+        const category = document.getElementById('categoryFilter').value;
+        const url = category ? `/api/gigs?category=${category}` : '/api/gigs';
+        await loadGigs(url);
+    }
+
+    async function loadGigs(url) {
+        try {
+            const response = await fetch(url, {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                displayGigs(data.gigs);
+            } else {
+                showAlert('Error loading gigs', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('Error loading gigs', 'error');
+        }
+    }
+
+    function displayGigs(gigs) {
+        const container = document.getElementById('gigsContainer');
+        
+        if (gigs.length === 0) {
+            container.innerHTML = '<p>No gigs found matching your criteria.</p>';
+            return;
+        }
+
+        container.innerHTML = gigs.map(gig => `
+            <div style="background: white; border: 1px solid #ddd; padding: 1.5rem; margin: 1rem 0; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 1rem;">
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: #333;">${gig.title}</h3>
+                        <p style="margin: 0; color: #666;">Category: ${gig.category}</p>
+                        <p style="margin: 0; color: #666;">Posted by: ${gig.provider_name}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <h4 style="margin: 0; color: #667eea;">$${gig.pay}</h4>
+                        ${gig.distance ? `<p style="margin: 0.25rem 0 0 0; color: #666;">${gig.distance} km away</p>` : ''}
+                    </div>
+                </div>
+                
+                ${gig.description ? `<p style="margin-bottom: 1rem;">${gig.description}</p>` : ''}
+                
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button onclick="viewGig(${gig.id})" class="btn">
+                        <i class="fas fa-eye"></i> View Details
+                    </button>
+                    <button onclick="applyToGig(${gig.id})" class="btn" style="background: #28a745;">
+                        <i class="fas fa-paper-plane"></i> Apply
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function viewGig(gigId) {
+        window.location.href = `/gig/${gigId}`;
+    }
+
+    async function applyToGig(gigId) {
+        try {
+            const response = await fetch(`/api/gigs/${gigId}/apply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    message: 'I am interested in this gig and would like to apply.'
+                })
+            });
+
+            if (response.ok) {
+                showAlert('Application submitted successfully!', 'success');
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error applying to gig', 'error');
+            }
+        } catch (error) {
+            showAlert('Error applying to gig', 'error');
+        }
+    }
+</script>
+{% endblock %}

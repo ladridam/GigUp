@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Gig Details - GigUp{% endblock %}
+
+{% block content %}
+<div id="gigDetailContainer">
+    <p>Loading gig details...</p>
+</div>
+
+<script>
+    async function loadGigDetail() {
+        const gigId = window.location.pathname.split('/').pop();
+        
+        try {
+            const response = await fetch(`/api/gigs/${gigId}`, {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                displayGigDetail(data.gig);
+            } else {
+                document.getElementById('gigDetailContainer').innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <h2>Gig Not Found</h2>
+                        <p>The gig you're looking for doesn't exist or has been removed.</p>
+                        <a href="/gigs" class="btn">Browse Other Gigs</a>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading gig:', error);
+        }
+    }
+
+    function displayGigDetail(gig) {
+        const container = document.getElementById('gigDetailContainer');
+        
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin: 2rem 0;">
+                <!-- Main Content -->
+                <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 2rem;">
+                        <div style="flex: 1;">
+                            <h1 style="margin: 0 0 0.5rem 0; color: #333;">${gig.title}</h1>
+                            <p style="margin: 0; color: #666; font-size: 1.1rem;">
+                                <strong>Category:</strong> ${gig.category}
+                            </p>
+                        </div>
+                        <div style="text-align: right;">
+                            <h2 style="margin: 0; color: #667eea;">$${gig.pay}</h2>
+                            <p style="margin: 0.25rem 0 0 0; color: #666;">
+                                ${gig.status === 'open' ? '🟢 Available' : '🔴 Filled'}
+                            </p>
+                        </div>
+                    </div>
+
+                    ${gig.description ? `
+                        <div style="margin-bottom: 2rem;">
+                            <h3 style="margin-bottom: 1rem; color: #333;">Description</h3>
+                            <p style="line-height: 1.6; color: #555;">${gig.description}</p>
+                        </div>
+                    ` : ''}
+
+                    ${gig.skills_required ? `
+                        <div style="margin-bottom: 2rem;">
+                            <h3 style="margin-bottom: 1rem; color: #333;">Required Skills</h3>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                ${gig.skills_required.split(',').map(skill => `
+                                    <span style="background: #e9ecef; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.9rem;">
+                                        ${skill.trim()}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                        <div>
+                            <h4 style="margin-bottom: 0.5rem; color: #333;">Date & Time</h4>
+                            <p style="margin: 0; color: #666;">${new Date(gig.date_time).toLocaleString()}</p>
+                        </div>
+                        ${gig.duration ? `
+                            <div>
+                                <h4 style="margin-bottom: 0.5rem; color: #333;">Duration</h4>
+                                <p style="margin: 0; color: #666;">${gig.duration}</p>
+                            </div>
+                        ` : ''}
+                        <div>
+                            <h4 style="margin-bottom: 0.5rem; color: #333;">Location</h4>
+                            <p style="margin: 0; color: #666;">${gig.location_address || 'Location provided after application'}</p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div id="actionButtons" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        ${gig.status === 'open' ? `
+                            <button onclick="applyToGig(${gig.id})" class="btn" style="background: #28a745;">
+                                <i class="fas fa-paper-plane"></i> Apply Now
+                            </button>
+                        ` : `
+                            <button disabled class="btn" style="background: #6c757d;">
+                                <i class="fas fa-ban"></i> Position Filled
+                            </button>
+                        `}
+                        <button onclick="shareGig(${gig.id})" class="btn" style="background: #17a2b8;">
+                            <i class="fas fa-share"></i> Share
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div>
+                    <!-- Provider Info -->
+                    <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem;">
+                        <h3 style="margin-bottom: 1rem; color: #333;">Provider</h3>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="width: 50px; height: 50px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                ${gig.provider_name ? gig.provider_name.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; color: #333;">${gig.provider_name}</h4>
+                                <p style="margin: 0; color: #666;">
+                                    ⭐ ${gig.provider_rating || 'No ratings yet'}
+                                </p>
+                            </div>
+                        </div>
+                        ${gig.provider_email ? `
+                            <p style="margin: 0.5rem 0; color: #666;">
+                                <i class="fas fa-envelope"></i> ${gig.provider_email}
+                            </p>
+                        ` : ''}
+                        ${gig.provider_phone ? `
+                            <p style="margin: 0.5rem 0; color: #666;">
+                                <i class="fas fa-phone"></i> ${gig.provider_phone}
+                            </p>
+                        ` : ''}
+                    </div>
+
+                    <!-- Map -->
+                    ${gig.location_lat && gig.location_lng ? `
+                        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="margin-bottom: 1rem; color: #333;">Location</h3>
+                            <div id="gigMap" style="height: 200px; border-radius: 5px;"></div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        // Initialize map if location exists
+        if (gig.location_lat && gig.location_lng) {
+            initGigMap(gig.location_lat, gig.location_lng);
+        }
+    }
+
+    function initGigMap(lat, lng) {
+        const gigMap = L.map('gigMap').setView([lat, lng], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(gigMap);
+
+        L.marker([lat, lng]).addTo(gigMap)
+            .bindPopup('Gig Location')
+            .openPopup();
+    }
+
+    async function applyToGig(gigId) {
+        try {
+            const response = await fetch(`/api/gigs/${gigId}/apply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    message: 'I am interested in this opportunity and would like to apply.'
+                })
+            });
+
+            if (response.ok) {
+                showAlert('Application submitted successfully!', 'success');
+                document.querySelector('#actionButtons button').disabled = true;
+                document.querySelector('#actionButtons button').innerHTML = '<i class="fas fa-check"></i> Applied';
+                document.querySelector('#actionButtons button').style.background = '#6c757d';
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error applying to gig', 'error');
+            }
+        } catch (error) {
+            showAlert('Error applying to gig', 'error');
+        }
+    }
+
+    function shareGig(gigId) {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            showAlert('Gig link copied to clipboard!', 'success');
+        });
+    }
+
+    // Load gig details when page loads
+    loadGigDetail();
+</script>
+
+<!-- Include Leaflet for map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+{% endblock %}

@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Post a Gig - GigUp{% endblock %}
+
+{% block content %}
+<div class="create-gig-page">
+    <h1>Post a New Gig</h1>
+    
+    <form id="createGigForm" style="max-width: 600px; margin: 2rem 0;">
+        <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <!-- Basic Information -->
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem; color: #333;">Gig Information</h3>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Gig Title *</label>
+                    <input type="text" id="title" required 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                           placeholder="e.g., Website Developer Needed">
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Category *</label>
+                    <select id="category" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                        <option value="">Select a category</option>
+                        <option value="technology">Technology</option>
+                        <option value="creative">Creative & Design</option>
+                        <option value="writing">Writing & Translation</option>
+                        <option value="marketing">Marketing & Sales</option>
+                        <option value="administrative">Administrative</option>
+                        <option value="customer-service">Customer Service</option>
+                        <option value="manual-labor">Manual Labor</option>
+                        <option value="professional">Professional Services</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Required Skills</label>
+                    <input type="text" id="skills_required" 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                           placeholder="e.g., Python, JavaScript, React (comma separated)">
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Description</label>
+                    <textarea id="description" rows="4" 
+                              style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                              placeholder="Describe the gig in detail..."></textarea>
+                </div>
+            </div>
+
+            <!-- Date & Time -->
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem; color: #333;">Date & Time</h3>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Date & Time *</label>
+                    <input type="datetime-local" id="date_time" required 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Duration</label>
+                    <input type="text" id="duration" 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                           placeholder="e.g., 4 hours, 2 days, 1 week">
+                </div>
+            </div>
+
+            <!-- Payment -->
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem; color: #333;">Payment</h3>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Pay Amount ($) *</label>
+                    <input type="number" id="pay" required min="0" step="0.01"
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                           placeholder="e.g., 50.00">
+                </div>
+            </div>
+
+            <!-- Location -->
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem; color: #333;">Location</h3>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Address</label>
+                    <input type="text" id="location_address" 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                           placeholder="Enter address or click on map">
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <button type="button" onclick="getCurrentLocation()" class="btn" style="background: #17a2b8;">
+                        <i class="fas fa-location-arrow"></i> Use My Current Location
+                    </button>
+                </div>
+                
+                <div id="mapContainer" style="height: 300px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 1rem;">
+                    <div id="map" style="height: 100%; border-radius: 5px;"></div>
+                </div>
+                
+                <div style="display: none;" id="coordinates">
+                    <input type="hidden" id="location_lat">
+                    <input type="hidden" id="location_lng">
+                    <p id="locationStatus" style="color: #666; font-size: 0.9rem;"></p>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn" style="width: 100%; padding: 1rem; font-size: 1.1rem;">
+                <i class="fas fa-paper-plane"></i> Post Gig
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Include Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+<script>
+    let map;
+    let marker;
+    let defaultLat = 40.7128; // New York default
+    let defaultLng = -74.0060;
+
+    // Initialize map
+    function initMap() {
+        map = L.map('map').setView([defaultLat, defaultLng], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add click event to place marker
+        map.on('click', function(e) {
+            if (marker) {
+                map.removeLayer(marker);
+            }
+            marker = L.marker(e.latlng).addTo(map);
+            document.getElementById('location_lat').value = e.latlng.lat;
+            document.getElementById('location_lng').value = e.latlng.lng;
+            updateLocationStatus(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Try to get user's location
+        getCurrentLocation();
+    }
+
+    function getCurrentLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    map.setView([lat, lng], 13);
+                    
+                    if (marker) {
+                        map.removeLayer(marker);
+                    }
+                    marker = L.marker([lat, lng]).addTo(map);
+                    
+                    document.getElementById('location_lat').value = lat;
+                    document.getElementById('location_lng').value = lng;
+                    updateLocationStatus(lat, lng);
+                    
+                    // Reverse geocode to get address
+                    reverseGeocode(lat, lng);
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    showAlert('Unable to get your location. Please click on the map to select a location.', 'error');
+                }
+            );
+        }
+    }
+
+    function updateLocationStatus(lat, lng) {
+        document.getElementById('locationStatus').textContent = 
+            `Location set: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        document.getElementById('coordinates').style.display = 'block';
+    }
+
+    async function reverseGeocode(lat, lng) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await response.json();
+            if (data.display_name) {
+                document.getElementById('location_address').value = data.display_name;
+            }
+        } catch (error) {
+            console.error('Reverse geocoding error:', error);
+        }
+    }
+
+    // Form submission
+    document.getElementById('createGigForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            title: document.getElementById('title').value,
+            category: document.getElementById('category').value,
+            skills_required: document.getElementById('skills_required').value,
+            description: document.getElementById('description').value,
+            date_time: document.getElementById('date_time').value,
+            duration: document.getElementById('duration').value,
+            pay: parseFloat(document.getElementById('pay').value),
+            location_lat: parseFloat(document.getElementById('location_lat').value),
+            location_lng: parseFloat(document.getElementById('location_lng').value),
+            location_address: document.getElementById('location_address').value
+        };
+
+        // Validate location
+        if (!formData.location_lat || !formData.location_lng) {
+            showAlert('Please select a location on the map', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/gigs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showAlert('Gig posted successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = `/gig/${result.gig_id}`;
+                }, 2000);
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error creating gig', 'error');
+            }
+        } catch (error) {
+            showAlert('Error creating gig: ' + error.message, 'error');
+        }
+    });
+
+    // Initialize map when page loads
+    initMap();
+</script>
+{% endblock %}

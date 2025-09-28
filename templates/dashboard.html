@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - GigUp{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>Welcome to Your Dashboard</h1>
+    
+    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 2rem 0;">
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h3>My Gigs</h3>
+            <p id="myGigsCount">Loading...</p>
+        </div>
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h3>Applications</h3>
+            <p id="applicationsCount">Loading...</p>
+        </div>
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h3>Contracts</h3>
+            <p id="contractsCount">Loading...</p>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin: 2rem 0;">
+        <a href="/create-gig" class="btn">
+            <i class="fas fa-plus"></i> Post a New Gig
+        </a>
+        <a href="/gigs" class="btn" style="background: #28a745;">
+            <i class="fas fa-search"></i> Browse Gigs
+        </a>
+    </div>
+
+    <div id="recentGigs" style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3>Recent Gigs Near You</h3>
+        <div id="gigsList"></div>
+    </div>
+</div>
+
+<script>
+    async function loadDashboardData() {
+        try {
+            // Load user's gigs
+            const gigsResponse = await fetch('/api/user/gigs', {
+                credentials: 'include'
+            });
+            if (gigsResponse.ok) {
+                const gigsData = await gigsResponse.json();
+                document.getElementById('myGigsCount').textContent = gigsData.gigs.length;
+            }
+
+            // Load nearby gigs
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    const nearbyResponse = await fetch(`/api/gigs?lat=${lat}&lng=${lng}`, {
+                        credentials: 'include'
+                    });
+                    if (nearbyResponse.ok) {
+                        const nearbyData = await nearbyResponse.json();
+                        displayGigs(nearbyData.gigs.slice(0, 5));
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+        }
+    }
+
+    function displayGigs(gigs) {
+        const gigsList = document.getElementById('gigsList');
+        if (gigs.length === 0) {
+            gigsList.innerHTML = '<p>No gigs found near your location.</p>';
+            return;
+        }
+
+        gigsList.innerHTML = gigs.map(gig => `
+            <div style="border: 1px solid #ddd; padding: 1rem; margin: 0.5rem 0; border-radius: 5px;">
+                <h4>${gig.title}</h4>
+                <p>Category: ${gig.category}</p>
+                <p>Pay: $${gig.pay}</p>
+                ${gig.distance ? `<p>Distance: ${gig.distance} km</p>` : ''}
+                <button onclick="viewGig(${gig.id})" class="btn">View Details</button>
+            </div>
+        `).join('');
+    }
+
+    function viewGig(gigId) {
+        window.location.href = `/gig/${gigId}`;
+    }
+
+    // Load dashboard data when page loads
+    loadDashboardData();
+</script>
+{% endblock %}

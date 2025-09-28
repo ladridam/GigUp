@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="homeContent">
+    <!-- Content will be dynamically shown based on auth status -->
+</div>
+
+<script>
+    async function loadHomeContent() {
+        try {
+            const response = await fetch('/api/me', {
+                credentials: 'include'
+            });
+            
+            const homeContent = document.getElementById('homeContent');
+            
+            if (response.ok) {
+                // User is logged in - redirect to dashboard
+                window.location.href = '/dashboard';
+            } else {
+                // User is not logged in - show welcome page
+                homeContent.innerHTML = `
+                    <div style="text-align: center; color: #333; padding: 4rem 0;">
+                        <h1 style="font-size: 3rem; margin-bottom: 1rem;">Welcome to GigUp</h1>
+                        <p style="font-size: 1.2rem; margin-bottom: 2rem;">Find gigs near you within 35km radius</p>
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <a href="/login" class="btn" style="background: #667eea;">
+                                Login
+                            </a>
+                            <a href="/signup" class="btn" style="background: transparent; color: #667eea; border: 2px solid #667eea;">
+                                Sign Up
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error checking auth:', error);
+        }
+    }
+
+    // Load content when page loads
+    loadHomeContent();
+</script>
+{% endblock %}

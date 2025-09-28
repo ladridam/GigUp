@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - GigUp{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <h1>My Profile</h1>
+    
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin: 2rem 0;">
+        <!-- Sidebar -->
+        <div>
+            <!-- Profile Summary -->
+            <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem;">
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <div style="width: 80px; height: 80px; background: #667eea; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold; margin-bottom: 1rem;" id="profileAvatar">
+                        U
+                    </div>
+                    <h3 id="profileName" style="margin: 0; color: #333;">Loading...</h3>
+                    <p id="profileEmail" style="margin: 0.5rem 0 0 0; color: #666;">Loading...</p>
+                </div>
+                
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; color: #ffc107; margin-bottom: 0.5rem;">
+                        ⭐ <span id="profileRating">0.0</span>
+                    </div>
+                    <p style="margin: 0; color: #666; font-size: 0.9rem;">
+                        <span id="profileRatingsCount">0</span> ratings
+                    </p>
+                </div>
+            </div>
+
+            <!-- Verification Status -->
+            <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h4 style="margin-bottom: 1rem; color: #333;">Verification Status</h4>
+                <div id="verificationStatus">
+                    <p style="margin: 0.5rem 0; color: #666;">
+                        <i class="fas fa-envelope" style="color: #6c757d;"></i> 
+                        Email: <span id="emailVerified">Not verified</span>
+                    </p>
+                    <p style="margin: 0.5rem 0; color: #666;">
+                        <i class="fas fa-phone" style="color: #6c757d;"></i> 
+                        Phone: <span id="phoneVerified">Not verified</span>
+                    </p>
+                    <p style="margin: 0.5rem 0; color: #666;">
+                        <i class="fas fa-id-card" style="color: #6c757d;"></i> 
+                        Account: <span id="accountApproved">Pending approval</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div>
+            <!-- Edit Profile Form -->
+            <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+                <h2 style="margin-bottom: 1.5rem; color: #333;">Edit Profile</h2>
+                
+                <form id="profileForm">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Full Name *</label>
+                            <input type="text" id="name" required 
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Phone Number *</label>
+                            <input type="tel" id="phone" required 
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Skills</label>
+                        <input type="text" id="skills" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                               placeholder="e.g., Python, JavaScript, Design, Marketing (comma separated)">
+                        <p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">
+                            List your skills to get better gig recommendations
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Bio</label>
+                        <textarea id="bio" rows="4" 
+                                  style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                                  placeholder="Tell others about yourself, your experience, and what you're looking for..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn" style="width: 100%; padding: 1rem;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+
+            <!-- Verification Section -->
+            <div style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h2 style="margin-bottom: 1.5rem; color: #333;">Account Verification</h2>
+                
+                <div style="display: grid; gap: 1rem;">
+                    <!-- Email Verification -->
+                    <div style="border: 1px solid #e9ecef; padding: 1.5rem; border-radius: 5px;">
+                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="margin: 0 0 0.5rem 0; color: #333;">
+                                    <i class="fas fa-envelope" style="color: #667eea;"></i> 
+                                    Email Verification
+                                </h4>
+                                <p style="margin: 0; color: #666;" id="emailStatusText">
+                                    Verify your email address to secure your account
+                                </p>
+                            </div>
+                            <div id="emailVerificationSection">
+                                <button onclick="startEmailVerification()" class="btn" style="background: #28a745;" id="emailVerifyBtn">
+                                    <i class="fas fa-check-circle"></i> Verify Email
+                                </button>
+                            </div>
+                        </div>
+                        <div id="emailCodeSection" style="display: none;">
+                            <div style="display: flex; gap: 0.5rem; align-items: end;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Verification Code</label>
+                                    <input type="text" id="emailCode" 
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                                           placeholder="Enter verification code">
+                                </div>
+                                <button onclick="verifyEmail()" class="btn">
+                                    <i class="fas fa-check"></i> Submit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phone Verification -->
+                    <div style="border: 1px solid #e9ecef; padding: 1.5rem; border-radius: 5px;">
+                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="margin: 0 0 0.5rem 0; color: #333;">
+                                    <i class="fas fa-phone" style="color: #667eea;"></i> 
+                                    Phone Verification
+                                </h4>
+                                <p style="margin: 0; color: #666;" id="phoneStatusText">
+                                    Verify your phone number for better trust
+                                </p>
+                            </div>
+                            <div id="phoneVerificationSection">
+                                <button onclick="startPhoneVerification()" class="btn" style="background: #28a745;" id="phoneVerifyBtn">
+                                    <i class="fas fa-check-circle"></i> Verify Phone
+                                </button>
+                            </div>
+                        </div>
+                        <div id="phoneCodeSection" style="display: none;">
+                            <div style="display: flex; gap: 0.5rem; align-items: end;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Verification Code</label>
+                                    <input type="text" id="phoneCode" 
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;"
+                                           placeholder="Enter verification code">
+                                </div>
+                                <button onclick="verifyPhone()" class="btn">
+                                    <i class="fas fa-check"></i> Submit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUser = null;
+    let emailVerificationCode = '';
+    let phoneVerificationCode = '';
+
+    // Load user profile data
+    async function loadProfile() {
+        try {
+            const response = await fetch('/api/me', {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                currentUser = data.user;
+                displayProfile(data.user);
+            } else {
+                showAlert('Error loading profile', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading profile:', error);
+            showAlert('Error loading profile', 'error');
+        }
+    }
+
+    function displayProfile(user) {
+        // Update profile summary
+        document.getElementById('profileName').textContent = user.name;
+        document.getElementById('profileEmail').textContent = user.email;
+        document.getElementById('profileAvatar').textContent = user.name.charAt(0).toUpperCase();
+        document.getElementById('profileRating').textContent = user.rating || '0.0';
+        document.getElementById('profileRatingsCount').textContent = user.total_ratings || '0';
+
+        // Update form fields
+        document.getElementById('name').value = user.name;
+        document.getElementById('phone').value = user.phone;
+        document.getElementById('skills').value = user.skills || '';
+        document.getElementById('bio').value = user.bio || '';
+
+        // Update verification status
+        updateVerificationStatus(user);
+    }
+
+    function updateVerificationStatus(user) {
+        // Email verification
+        if (user.verified_email) {
+            document.getElementById('emailVerified').innerHTML = '<span style="color: #28a745;">Verified</span>';
+            document.getElementById('emailStatusText').innerHTML = '<span style="color: #28a745;">✓ Email verified</span>';
+            document.getElementById('emailVerificationSection').innerHTML = '<span style="color: #28a745; font-weight: 500;">✓ Verified</span>';
+        } else {
+            document.getElementById('emailVerified').innerHTML = '<span style="color: #dc3545;">Not verified</span>';
+        }
+
+        // Phone verification
+        if (user.verified_phone) {
+            document.getElementById('phoneVerified').innerHTML = '<span style="color: #28a745;">Verified</span>';
+            document.getElementById('phoneStatusText').innerHTML = '<span style="color: #28a745;">✓ Phone verified</span>';
+            document.getElementById('phoneVerificationSection').innerHTML = '<span style="color: #28a745; font-weight: 500;">✓ Verified</span>';
+        } else {
+            document.getElementById('phoneVerified').innerHTML = '<span style="color: #dc3545;">Not verified</span>';
+        }
+
+        // Account approval
+        if (user.is_approved) {
+            document.getElementById('accountApproved').innerHTML = '<span style="color: #28a745;">Approved</span>';
+        } else {
+            document.getElementById('accountApproved').innerHTML = '<span style="color: #ffc107;">Pending approval</span>';
+        }
+    }
+
+    // Profile form submission
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value,
+            skills: document.getElementById('skills').value,
+            bio: document.getElementById('bio').value
+        };
+
+        try {
+            const response = await fetch('/api/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                showAlert('Profile updated successfully!', 'success');
+                // Reload profile to get updated data
+                loadProfile();
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error updating profile', 'error');
+            }
+        } catch (error) {
+            showAlert('Error updating profile: ' + error.message, 'error');
+        }
+    });
+
+    // Email verification
+    async function startEmailVerification() {
+        try {
+            // For MVP, we'll simulate generating a code
+            // In production, this would send an actual email
+            emailVerificationCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+            
+            document.getElementById('emailCodeSection').style.display = 'block';
+            document.getElementById('emailVerifyBtn').style.display = 'none';
+            document.getElementById('emailStatusText').innerHTML = 
+                `Verification code: <strong>${emailVerificationCode}</strong> (This would be sent to your email in production)`;
+            
+            showAlert('Verification code generated. Enter it above to verify your email.', 'success');
+        } catch (error) {
+            showAlert('Error starting email verification', 'error');
+        }
+    }
+
+    async function verifyEmail() {
+        const code = document.getElementById('emailCode').value;
+        
+        if (!code) {
+            showAlert('Please enter the verification code', 'error');
+            return;
+        }
+
+        if (code !== emailVerificationCode) {
+            showAlert('Invalid verification code', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/verify/email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ code: code })
+            });
+
+            if (response.ok) {
+                showAlert('Email verified successfully!', 'success');
+                document.getElementById('emailCodeSection').style.display = 'none';
+                document.getElementById('emailVerificationSection').innerHTML = '<span style="color: #28a745; font-weight: 500;">✓ Verified</span>';
+                document.getElementById('emailStatusText').innerHTML = '<span style="color: #28a745;">✓ Email verified</span>';
+                // Reload profile to update status
+                loadProfile();
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error verifying email', 'error');
+            }
+        } catch (error) {
+            showAlert('Error verifying email', 'error');
+        }
+    }
+
+    // Phone verification
+    async function startPhoneVerification() {
+        try {
+            // For MVP, we'll simulate generating a code
+            phoneVerificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            
+            document.getElementById('phoneCodeSection').style.display = 'block';
+            document.getElementById('phoneVerifyBtn').style.display = 'none';
+            document.getElementById('phoneStatusText').innerHTML = 
+                `Verification code: <strong>${phoneVerificationCode}</strong> (This would be sent via SMS in production)`;
+            
+            showAlert('Verification code generated. Enter it above to verify your phone.', 'success');
+        } catch (error) {
+            showAlert('Error starting phone verification', 'error');
+        }
+    }
+
+    async function verifyPhone() {
+        const code = document.getElementById('phoneCode').value;
+        
+        if (!code) {
+            showAlert('Please enter the verification code', 'error');
+            return;
+        }
+
+        if (code !== phoneVerificationCode) {
+            showAlert('Invalid verification code', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/verify/phone', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ code: code })
+            });
+
+            if (response.ok) {
+                showAlert('Phone verified successfully!', 'success');
+                document.getElementById('phoneCodeSection').style.display = 'none';
+                document.getElementById('phoneVerificationSection').innerHTML = '<span style="color: #28a745; font-weight: 500;">✓ Verified</span>';
+                document.getElementById('phoneStatusText').innerHTML = '<span style="color: #28a745;">✓ Phone verified</span>';
+                // Reload profile to update status
+                loadProfile();
+            } else {
+                const error = await response.json();
+                showAlert(error.error || 'Error verifying phone', 'error');
+            }
+        } catch (error) {
+            showAlert('Error verifying phone', 'error');
+        }
+    }
+
+    // Load profile when page loads
+    loadProfile();
+</script>
+
+<style>
+    input, textarea, select {
+        transition: border-color 0.3s ease;
+    }
+
+    input:focus, textarea:focus, select:focus {
+        border-color: #667eea !important;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+
+    .verification-item {
+        transition: all 0.3s ease;
+    }
+
+    .verification-item:hover {
+        background: #f8f9fa;
+    }
+</style>
+{% endblock %}

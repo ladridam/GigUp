@@ -1,0 +1,32 @@
+// Get all users
+fetch('/api/admin/users', {
+    credentials: 'include'
+})
+.then(response => response.json())
+.then(data => {
+    console.log('All users:', data.users);
+    
+    // Find your user ID in the list
+    const yourUser = data.users.find(user => user.email === 'your-email@example.com');
+    if (yourUser) {
+        console.log('Your user ID:', yourUser.id);
+        
+        // Approve your user
+        return fetch(`/api/admin/users/${yourUser.id}/approve`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ approved: true })
+        });
+    }
+})
+.then(response => response.json())
+.then(result => {
+    console.log('Approval result:', result);
+    alert('User approved successfully!');
+})
+.catch(error => {
+    console.error('Error:', error);
+});
