@@ -195,53 +195,74 @@
             console.error('Reverse geocoding error:', error);
         }
     }
-
+    let isSubmitting = false;
     // Form submission
     document.getElementById('createGigForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const formData = {
-            title: document.getElementById('title').value,
-            category: document.getElementById('category').value,
-            skills_required: document.getElementById('skills_required').value,
-            description: document.getElementById('description').value,
-            date_time: document.getElementById('date_time').value,
-            duration: document.getElementById('duration').value,
-            pay: parseFloat(document.getElementById('pay').value),
-            location_lat: parseFloat(document.getElementById('location_lat').value),
-            location_lng: parseFloat(document.getElementById('location_lng').value),
-            location_address: document.getElementById('location_address').value
-        };
+        // Prevent multiple submissions
+    if (isSubmitting) {
+        return;
+    }
+    isSubmitting = true;
+    
+    // Disable submit button
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Gig...';
+    
+    const formData = {
+        title: document.getElementById('title').value,
+        category: document.getElementById('category').value,
+        skills_required: document.getElementById('skills_required').value,
+        description: document.getElementById('description').value,
+        date_time: document.getElementById('date_time').value,
+        duration: document.getElementById('duration').value,
+        pay: parseFloat(document.getElementById('pay').value),
+        location_lat: parseFloat(document.getElementById('location_lat').value),
+        location_lng: parseFloat(document.getElementById('location_lng').value),
+        location_address: document.getElementById('location_address').value
+    };
 
         // Validate location
-        if (!formData.location_lat || !formData.location_lng) {
-            showAlert('Please select a location on the map', 'error');
-            return;
-        }
+    if (!formData.location_lat || !formData.location_lng) {
+        showAlert('Please select a location on the map', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        isSubmitting = false;
+        return;
+    }
 
-        try {
-            const response = await fetch('/api/gigs', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify(formData)
-            });
+    try {
+        const response = await fetch('/api/gigs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(formData)
+        });
 
-            if (response.ok) {
-                const result = await response.json();
-                showAlert('Gig posted successfully!', 'success');
-                setTimeout(() => {
-                    window.location.href = `/gig/${result.gig_id}`;
-                }, 2000);
-            } else {
-                const error = await response.json();
-                showAlert(error.error || 'Error creating gig', 'error');
-            }
-        } catch (error) {
-            showAlert('Error creating gig: ' + error.message, 'error');
+        if (response.ok) {
+            const result = await response.json();
+            showAlert('Gig posted successfully!', 'success');
+            setTimeout(() => {
+                window.location.href = `/gig/${result.gig_id}`;
+            }, 2000);
+        } else {
+            const error = await response.json();
+            showAlert(error.error || 'Error creating gig', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            isSubmitting = false;
         }
+    } catch (error) {
+        showAlert('Error creating gig: ' + error.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        isSubmitting = false;
+    }
     });
 
     // Initialize map when page loads
