@@ -31,26 +31,22 @@
 
 <script>
     let currentContract = null;
-    let signaturePad = null;
     let currentSigner = null;
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
 
     async function loadContractDetail() {
         const contractId = window.location.pathname.split('/').pop();
         
         try {
-            const response = await fetch(`/api/user/contracts`, {
+            const response = await fetch(`/api/contracts/${contractId}`, {
                 credentials: 'include'
             });
             
             if (response.ok) {
                 const data = await response.json();
-                const contract = data.contracts.find(c => c.id == contractId);
-                
-                if (contract) {
-                    displayContractDetail(contract);
-                } else {
-                    showContractNotFound();
-                }
+                displayContractDetail(data.contract);
             } else {
                 showContractNotFound();
             }
@@ -64,9 +60,13 @@
         currentContract = contract;
         const container = document.getElementById('contractContainer');
         
-        const isProvider = contract.provider_id === parseInt('{{ session.user_id|default(0) }}');
-        const isSeeker = contract.seeker_id === parseInt('{{ session.user_id|default(0) }}');
+        // Get current user ID from session (you might need to adjust this based on your auth system)
+        const currentUserId = parseInt('{{ session.get("user_id", 0) }}') || 0;
+        
+        const isProvider = contract.provider_id === currentUserId;
+        const isSeeker = contract.seeker_id === currentUserId;
         const canSign = (isProvider && !contract.provider_signature) || (isSeeker && !contract.seeker_signature);
+        const canManage = isProvider || isSeeker;
         
         container.innerHTML = `
             <div style="max-width: 800px; margin: 0 auto;">
@@ -75,6 +75,7 @@
                     <div style="text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #667eea; padding-bottom: 1rem;">
                         <h1 style="color: #333; margin-bottom: 0.5rem;">GigUp Contract Agreement</h1>
                         <p style="color: #666; font-size: 1.1rem;">${contract.title}</p>
+                        <p style="color: #999; font-size: 0.9rem;">Contract ID: ${contract.id}</p>
                     </div>
 
                     <!-- Contract Parties -->
@@ -83,10 +84,11 @@
                             <h3 style="color: #333; margin-bottom: 1rem;">Provider</h3>
                             <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px;">
                                 <p><strong>Name:</strong> ${contract.provider_name}</p>
+                                <p><strong>Email:</strong> ${contract.provider_email}</p>
                                 <p><strong>Role:</strong> Service Provider</p>
                                 ${contract.provider_signature ? `
                                     <p><strong>Signature:</strong> <span style="color: #28a745;">✓ Signed</span></p>
-                                    <p><small>Signed on: ${new Date(contract.signed_at).toLocaleDateString()}</small></p>
+                                    <p><small>Signed on: ${contract.signed_at ? new Date(contract.signed_at).toLocaleDateString() : 'Date not available'}</small></p>
                                 ` : `
                                     <p><strong>Signature:</strong> <span style="color: #dc3545;">Pending</span></p>
                                 `}
@@ -97,10 +99,11 @@
                             <h3 style="color: #333; margin-bottom: 1rem;">Seeker</h3>
                             <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px;">
                                 <p><strong>Name:</strong> ${contract.seeker_name}</p>
+                                <p><strong>Email:</strong> ${contract.seeker_email}</p>
                                 <p><strong>Role:</strong> Service Seeker</p>
                                 ${contract.seeker_signature ? `
                                     <p><strong>Signature:</strong> <span style="color: #28a745;">✓ Signed</span></p>
-                                    <p><small>Signed on: ${new Date(contract.signed_at).toLocaleDateString()}</small></p>
+                                    <p><small>Signed on: ${contract.signed_at ? new Date(contract.signed_at).toLocaleDateString() : 'Date not available'}</small></p>
                                 ` : `
                                     <p><strong>Signature:</strong> <span style="color: #dc3545;">Pending</span></p>
                                 `}
@@ -119,7 +122,7 @@
                                 <div>
                                     <strong>Pay Amount:</strong> $${contract.pay}
                                 </div>
-                                ${contract.hours ? `<div><strong>Hours:</strong> ${contract.hours}</div>` : ''}
+                                ${contract.hours ? `<div><strong>Hours:</strong> ${contract.hours} hours</div>` : ''}
                                 <div>
                                     <strong>Contract Date:</strong> ${new Date(contract.date).toLocaleDateString()}
                                 </div>
@@ -129,6 +132,9 @@
                                         ${contract.status.toUpperCase()}
                                     </span>
                                 </div>
+                                <div>
+                                    <strong>Created:</strong> ${new Date(contract.created_at).toLocaleDateString()}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -136,36 +142,51 @@
                     <!-- Contract Terms -->
                     <div style="margin-bottom: 2rem;">
                         <h3 style="color: #333; margin-bottom: 1rem;">Terms & Conditions</h3>
-                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 5px; line-height: 1.6;">
-                            ${contract.terms || `
-                                <p>This contract formalizes the agreement between the Provider and Seeker for the gig "${contract.title}".</p>
-                                <p><strong>Responsibilities:</strong></p>
-                                <ul>
-                                    <li>Provider agrees to deliver the services as described in the gig</li>
-                                    <li>Seeker agrees to provide necessary information and cooperation</li>
-                                    <li>Both parties agree to maintain professional conduct</li>
-                                </ul>
-                                <p><strong>Payment:</strong> $${contract.pay} upon satisfactory completion of the gig</p>
-                                <p><strong>Dispute Resolution:</strong> Any disputes will be mediated through GigUp platform</p>
-                            `}
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 5px; line-height: 1.6; white-space: pre-wrap;">
+                            ${contract.terms || `This contract formalizes the agreement between the Provider and Seeker for the gig "${contract.title}".
+
+Responsibilities:
+• Provider agrees to deliver the services as described in the gig
+• Seeker agrees to provide necessary information and cooperation  
+• Both parties agree to maintain professional conduct
+
+Payment:
+• Amount: $${contract.pay}
+• Payment due upon satisfactory completion of services
+
+Dispute Resolution:
+• Any disputes will be mediated through GigUp platform
+• Both parties agree to communicate professionally to resolve issues`}
                         </div>
                     </div>
 
                     <!-- Action Buttons -->
                     <div style="text-align: center; margin-top: 2rem;">
                         ${canSign ? `
-                            <button onclick="openSignatureModal(${isProvider ? 'true' : 'false'})" class="btn" style="background: #28a745; padding: 1rem 2rem; font-size: 1.1rem;">
-                                <i class="fas fa-signature"></i> Sign Contract
+                            <button onclick="openSignatureModal(${isProvider})" class="btn" style="background: #28a745; padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem;">
+                                <i class="fas fa-signature"></i> Sign Contract as ${isProvider ? 'Provider' : 'Seeker'}
+                            </button>
+                        ` : ''}
+                        
+                        ${canManage && contract.status === 'signed' ? `
+                            <button onclick="completeContract()" class="btn" style="background: #17a2b8; padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem;">
+                                <i class="fas fa-check-circle"></i> Mark as Completed
+                            </button>
+                        ` : ''}
+                        
+                        ${canManage && contract.status === 'pending' ? `
+                            <button onclick="cancelContract()" class="btn" style="background: #dc3545; padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem;">
+                                <i class="fas fa-times"></i> Cancel Contract
                             </button>
                         ` : ''}
                         
                         ${contract.status === 'signed' ? `
-                            <button onclick="downloadContract()" class="btn" style="background: #17a2b8; padding: 1rem 2rem; font-size: 1.1rem;">
+                            <button onclick="downloadContract()" class="btn" style="background: #6c757d; padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem;">
                                 <i class="fas fa-download"></i> Download Contract
                             </button>
                         ` : ''}
                         
-                        <a href="/my-gigs" class="btn" style="background: #6c757d; padding: 1rem 2rem; font-size: 1.1rem;">
+                        <a href="/my-gigs" class="btn" style="background: #6c757d; padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem;">
                             <i class="fas fa-arrow-left"></i> Back to My Gigs
                         </a>
                     </div>
@@ -173,21 +194,21 @@
                     <!-- Signatures Display -->
                     ${contract.status === 'signed' ? `
                         <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #dee2e6;">
-                            <h3 style="color: #333; margin-bottom: 1rem; text-align: center;">Signatures</h3>
+                            <h3 style="color: #333; margin-bottom: 1rem; text-align: center;">Digital Signatures</h3>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                                 <div style="text-align: center;">
                                     <h4>Provider Signature</h4>
                                     ${contract.provider_signature ? `
-                                        <img src="${contract.provider_signature}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px;">
+                                        <img src="${contract.provider_signature}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px; background: white;">
                                         <p><small>${contract.provider_name}</small></p>
-                                    ` : '<p>Not signed</p>'}
+                                    ` : '<p style="color: #dc3545;">Not signed</p>'}
                                 </div>
                                 <div style="text-align: center;">
                                     <h4>Seeker Signature</h4>
                                     ${contract.seeker_signature ? `
-                                        <img src="${contract.seeker_signature}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px;">
+                                        <img src="${contract.seeker_signature}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 5px; background: white;">
                                         <p><small>${contract.seeker_name}</small></p>
-                                    ` : '<p>Not signed</p>'}
+                                    ` : '<p style="color: #dc3545;">Not signed</p>'}
                                 </div>
                             </div>
                         </div>
@@ -218,27 +239,72 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
         
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
+        // Reset drawing state
+        isDrawing = false;
+        lastX = 0;
+        lastY = 0;
 
-        canvas.onmousedown = (e) => {
-            isDrawing = true;
-            [lastX, lastY] = [e.offsetX, e.offsetY];
+        // Mouse events
+        canvas.onmousedown = startDrawing;
+        canvas.onmousemove = draw;
+        canvas.onmouseup = stopDrawing;
+        canvas.onmouseout = stopDrawing;
+
+        // Touch events for mobile
+        canvas.ontouchstart = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
         };
 
-        canvas.onmousemove = (e) => {
-            if (!isDrawing) return;
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(e.offsetX, e.offsetY);
-            ctx.stroke();
-            [lastX, lastY] = [e.offsetX, e.offsetY];
+        canvas.ontouchmove = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
         };
 
-        canvas.onmouseup = () => isDrawing = false;
-        canvas.onmouseout = () => isDrawing = false;
+        canvas.ontouchend = () => {
+            const mouseEvent = new MouseEvent('mouseup', {});
+            canvas.dispatchEvent(mouseEvent);
+        };
+    }
+
+    function startDrawing(e) {
+        isDrawing = true;
+        const rect = e.target.getBoundingClientRect();
+        lastX = e.clientX - rect.left;
+        lastY = e.clientY - rect.top;
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        const canvas = e.target;
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        const currentX = e.clientX - rect.left;
+        const currentY = e.clientY - rect.top;
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(currentX, currentY);
+        ctx.stroke();
+        
+        lastX = currentX;
+        lastY = currentY;
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
     }
 
     function clearSignature() {
@@ -252,64 +318,136 @@
         currentSigner = null;
     }
 
-    function saveSignature() {
+    async function saveSignature() {
         const canvas = document.getElementById('signaturePad');
+        
+        // Check if signature is not empty
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const isEmpty = !imageData.data.some(channel => channel !== 0);
+        
+        if (isEmpty) {
+            showAlert('Please provide a signature before saving.', 'error');
+            return;
+        }
+
         const signatureData = canvas.toDataURL(); // Base64 encoded image
         
         if (!currentContract || !currentSigner) return;
 
-        // Send signature to server
-        fetch(`/api/contracts/${currentContract.id}/sign`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({ signature: signatureData })
-        })
-        .then(response => response.json())
-        .then(result => {
+        try {
+            const response = await fetch(`/api/contracts/${currentContract.id}/sign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ signature: signatureData })
+            });
+
+            const result = await response.json();
+            
             if (response.ok) {
                 showAlert('Contract signed successfully!', 'success');
                 closeSignatureModal();
                 loadContractDetail(); // Reload to show updated status
             } else {
-                showAlert('Error: ' + result.error, 'error');
+                showAlert('Error: ' + (result.error || 'Failed to sign contract'), 'error');
             }
-        })
-        .catch(error => {
+        } catch (error) {
             showAlert('Network error: ' + error.message, 'error');
-        });
+        }
+    }
+
+    async function completeContract() {
+        if (!confirm('Are you sure you want to mark this contract as completed?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/contracts/${currentContract.id}/complete`, {
+                method: 'PUT',
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                showAlert('Contract marked as completed!', 'success');
+                loadContractDetail();
+            } else {
+                showAlert('Error: ' + (result.error || 'Failed to complete contract'), 'error');
+            }
+        } catch (error) {
+            showAlert('Network error: ' + error.message, 'error');
+        }
+    }
+
+    async function cancelContract() {
+        if (!confirm('Are you sure you want to cancel this contract? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/contracts/${currentContract.id}/cancel`, {
+                method: 'PUT',
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                showAlert('Contract cancelled successfully!', 'success');
+                loadContractDetail();
+            } else {
+                showAlert('Error: ' + (result.error || 'Failed to cancel contract'), 'error');
+            }
+        } catch (error) {
+            showAlert('Network error: ' + error.message, 'error');
+        }
     }
 
     function downloadContract() {
-        // Simple contract download (in production, generate PDF)
+        if (!currentContract) return;
+
         const contractText = `
 GIGUP CONTRACT AGREEMENT
+========================
 
 Contract ID: ${currentContract.id}
 Gig: ${currentContract.title}
+Status: ${currentContract.status.toUpperCase()}
+
+PARTIES:
+--------
 Provider: ${currentContract.provider_name}
-Seeker: ${currentContract.seeker_name}
+Email: ${currentContract.provider_email}
+Signature: ${currentContract.provider_signature ? 'SIGNED' : 'PENDING'}
+
+Seeker: ${currentContract.seeker_name}  
+Email: ${currentContract.seeker_email}
+Signature: ${currentContract.seeker_signature ? 'SIGNED' : 'PENDING'}
+
+CONTRACT DETAILS:
+-----------------
 Pay Amount: $${currentContract.pay}
-Date: ${new Date(currentContract.date).toLocaleDateString()}
-Status: ${currentContract.status}
+${currentContract.hours ? `Hours: ${currentContract.hours}` : ''}
+Contract Date: ${new Date(currentContract.date).toLocaleDateString()}
+Created: ${new Date(currentContract.created_at).toLocaleDateString()}
+${currentContract.signed_at ? `Signed: ${new Date(currentContract.signed_at).toLocaleDateString()}` : ''}
 
-TERMS:
-${currentContract.terms}
+TERMS & CONDITIONS:
+-------------------
+${currentContract.terms || 'Standard GigUp contract terms apply.'}
 
-SIGNATURES:
-Provider: ${currentContract.provider_name} - ${currentContract.provider_signature ? 'Signed' : 'Not Signed'}
-Seeker: ${currentContract.seeker_name} - ${currentContract.seeker_signature ? 'Signed' : 'Not Signed'}
-
-Generated on: ${new Date().toLocaleDateString()}
+This contract was generated by GigUp on ${new Date().toLocaleDateString()}.
         `;
 
         const blob = new Blob([contractText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `contract-${currentContract.id}.txt`;
+        a.download = `gigup-contract-${currentContract.id}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

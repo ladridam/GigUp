@@ -286,6 +286,14 @@
         alert(`Sign contract ${contractId} - to be implemented`);
     }
 
+    function viewContract(contractId) {
+        window.location.href = `/contract/${contractId}`;
+    }
+
+    function signContract(contractId) {
+        window.location.href = `/contract/${contractId}`;
+    }
+
     // Load initial data
     showTab('posted');
 </script>
